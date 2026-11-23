@@ -121,7 +121,7 @@ function renderCart() {
     return `<div class="cart-item"><img src="assets/${product.image}" alt="${product.name}" width="91" height="123"><div style="flex:1;min-width:0"><h3>${product.name}</h3><p>Beden: ${item.size}</p><p>${money(product.price)}</p><div class="quantity"><button data-quantity="${index}" data-delta="-1" aria-label="${product.name} adedini azalt">−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${product.name} adedini artır" ${item.qty === 99 ? 'disabled' : ''}>+</button><button class="remove" data-remove="${index}">Kaldır</button></div></div></div>`;
   }).join('') : `<div class="empty-state">${svg('bag')}<h3>Bir güzel başlangıç.</h3><p>Çantanda henüz bir parça yok. Yeni favorilerini keşfetmeye ne dersin?</p><button class="button primary full" data-close>Koleksiyona dön</button></div>`;
   const total = cartTotal();
-  $('#cart-summary').innerHTML = cart.length ? `<div class="summary-line"><span>Ara toplam</span><strong>${money(total)}</strong></div><div class="summary-line"><span>Kargo</span><span>${total >= 2500 ? 'Bizden' : 'Ödeme adımında hesaplanır'}</span></div><div class="shipping-progress" aria-hidden="true"><span style="width:${Math.min(100, total / 25)}%"></span></div><p class="cart-note">${total < 2500 ? `Ücretsiz kargoya ${money(2500 - total)} kaldı.` : 'Bu seçkine ücretsiz kargo eşlik ediyor.'}</p><button class="button primary full" id="checkout">Sipariş özetini gör</button><p class="cart-note">Konsept mağaza. Gerçek ödeme alınmaz.</p>` : '';
+  $('#cart-summary').innerHTML = cart.length ? `<div class="summary-line"><span>Ara toplam</span><strong>${money(total)}</strong></div><div class="summary-line"><span>Kargo</span><span>${total >= 2500 ? 'Bizden' : 'Deneme adımında hesaplanır'}</span></div><div class="shipping-progress" aria-hidden="true"><span style="width:${Math.min(100, total / 25)}%"></span></div><p class="cart-note">${total < 2500 ? `Ücretsiz kargoya ${money(2500 - total)} kaldı.` : 'Bu seçkine ücretsiz kargo eşlik ediyor.'}</p><button class="button primary full" id="checkout">Deneme ödemesine geç</button><p class="cart-note">Kart bilgisi gerekmez. Gerçek ödeme alınmaz.</p>` : '';
 }
 function showInfo(title, body) {
   $('#info-content').innerHTML = `<p class="eyebrow">RABÜS ATELIER</p><h2 id="info-title">${title}</h2>${body}`;
@@ -148,7 +148,7 @@ const information = {
   'Teslimat ve iade': '<p>Konsept mağazada 2.500 TL ve üzeri siparişler için ücretsiz kargo ve 14 gün kolay iade deneyimi öngörülmüştür.</p><p>Gerçek teslimat ve iade koşulları satış başlamadan önce marka tarafından belirlenecektir.</p>',
   'Beden rehberi': '<p>Örnek beden aralıkları: XS (34), S (36), M (38), L (40), XL (42).</p><p>Bu değerler tasarım amaçlıdır. Kesin ürün ölçüleri gerçek koleksiyonla birlikte eklenecektir.</p>',
   'İletişim': '<p>Rabüs şu anda bir konsept mağazadır. Müşteri hizmetleri e-posta adresi ve iletişim kanalları marka bilgileri tamamlandığında burada yer alacak.</p>',
-  'Gizlilik': '<p>Sepetin ve favorilerin yalnızca bu tarayıcıda saklanır. Bülten formu e-posta adresini sunucuya göndermez veya kaydetmez.</p><p>Gerçek mağazanın gizlilik ve çerez metinleri, kullanılacak hizmetlere göre hazırlanacaktır.</p>'
+  'Gizlilik': '<p>Sepetin ve favorilerin yalnızca bu tarayıcıda saklanır. Bülten formu e-posta adresini sunucuya göndermez veya kaydetmez.</p><p>Deneme teslimat bilgileri yalnızca açık ödeme ekranında kullanılır; gönderilmez, kalıcı kaydedilmez ve ekran kapatıldığında silinir. Gerçek bilgilerini yazmana gerek yoktur.</p><p>Gerçek mağazanın gizlilik ve çerez metinleri, kullanılacak hizmetlere göre hazırlanacaktır.</p>'
 };
 document.addEventListener('click', event => {
   const product = event.target.closest('[data-product]');
@@ -186,7 +186,7 @@ document.addEventListener('click', event => {
   }
   const remove = event.target.closest('[data-remove]');
   if (remove) { cart.splice(Number(remove.dataset.remove), 1); persist(); renderCart(); $('#cart [data-close]').focus(); }
-  if (event.target.closest('#checkout')) showInfo('Seçkin hazır.', `<p>${cart.reduce((sum, item) => sum + item.qty, 0)} parça · ${money(cartTotal())}</p><p>Rabüs şu anda bir konsept mağaza. Henüz sipariş oluşturulmaz ve gerçek ödeme alınmaz.</p><button class="button primary full" data-close>Keşfetmeye devam et</button>`);
+  if (event.target.closest('#checkout')) startCheckout();
   const info = event.target.closest('[data-info]');
   if (info && information[info.dataset.info]) showInfo(info.dataset.info, information[info.dataset.info]);
   if (event.target.closest('#main-nav a') && !category) closeMenu();
@@ -245,4 +245,134 @@ $('#newsletter-form').addEventListener('submit', event => {
   $('#newsletter-message').textContent = 'İlgin için teşekkürler. Rabüs bülteni mağaza açıldığında aktif olacak; e-posta adresin kaydedilmedi.';
   event.target.reset();
 });
+// This checkout is a local simulation. It makes no payment or order requests.
+let checkoutSession = null;
+let checkoutTimer;
+const checkoutMoney = cents => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+function checkoutTotals() {
+  const subtotal = checkoutSession.items.reduce((sum, item) => sum + products.find(product => product.id === item.id).price * 100 * item.qty, 0);
+  const shipping = checkoutSession.shipping === 'express' ? 14990 : (subtotal >= 250000 ? 0 : 6990);
+  return { subtotal, shipping, total: subtotal + shipping };
+}
+function checkoutSummary() {
+  const totals = checkoutTotals();
+  return `<h3>Seçkinin özeti</h3>${checkoutSession.items.map(item => {
+    const product = products.find(product => product.id === item.id);
+    return `<div class="checkout-summary-item"><img src="assets/${product.image}" alt="${product.name}" width="56" height="74"><div><h4>${product.name}</h4><p>${item.size} · ${item.qty} adet</p><strong>${checkoutMoney(product.price * item.qty * 100)}</strong></div></div>`;
+  }).join('')}<div class="summary-line"><span>Ürünler</span><span>${checkoutMoney(totals.subtotal)}</span></div><div class="summary-line"><span>${checkoutSession.shipping === 'express' ? 'Hızlı' : 'Standart'} kargo</span><span>${totals.shipping ? checkoutMoney(totals.shipping) : 'Ücretsiz'}</span></div><div class="summary-line checkout-total"><span>Deneme toplamı</span><strong id="checkout-total">${checkoutMoney(totals.total)}</strong></div><p class="checkout-summary-note">Tüm tutarlar örnektir. Bu denemede ödeme, fatura, sipariş veya kargo oluşturulmaz. Sepetindeki ürünler korunur.</p>`;
+}
+function startCheckout() {
+  if (!cart.length) { toast('Denemek için önce çantana bir parça ekle.'); return; }
+  openDialog('#checkout-dialog');
+  returnFocus = $('#cart-open');
+  checkoutSession = { step: 1, items: cart.map(item => ({ ...item })), shipping: 'standard', delivery: {}, scenario: 'success', busy: false, result: null };
+  renderCheckout();
+}
+function renderCheckout() {
+  if (!checkoutSession) return;
+  const { step } = checkoutSession;
+  $$('.checkout-steps [data-step]').forEach(item => {
+    const current = Number(item.dataset.step);
+    item.classList.toggle('complete', current < step);
+    if (current === step) item.setAttribute('aria-current', 'step');
+    else item.removeAttribute('aria-current');
+  });
+  let content;
+  if (step === 1) content = deliveryStep();
+  else if (step === 2) content = paymentStep();
+  else content = resultStep();
+  $('#checkout-content').innerHTML = `<div class="checkout-layout"><div class="checkout-main">${content}</div><aside class="checkout-summary" aria-label="Deneme sipariş özeti">${checkoutSummary()}</aside></div>`;
+  if (step === 1) Object.entries(checkoutSession.delivery).forEach(([name, value]) => {
+    const input = $(`#delivery-form [name="${name}"]`);
+    if (input) input.value = value;
+  });
+  if (step === 2) $('#delivery-preview-text').textContent = deliveryText();
+  $('#checkout-dialog').scrollTop = 0;
+  $('#checkout-step-heading').focus({ preventScroll: true });
+}
+function deliveryStep() {
+  const subtotal = checkoutTotals().subtotal;
+  return `<h3 id="checkout-step-heading" tabindex="-1">Nereye eşlik edelim?</h3><p class="checkout-intro">Bu bir deneme. Gerçek bilgilerini yazmana gerek yok; form gönderilmez ve kalıcı kaydedilmez.</p><button class="underlined-link" type="button" id="fill-demo-details">Örnek bilgilerle doldur</button>
+  <form id="delivery-form" autocomplete="off" novalidate><div class="checkout-form-grid">
+    <div class="checkout-field"><label for="demo-first">Ad *</label><input id="demo-first" name="first" required minlength="2" maxlength="60" placeholder="Deniz" autocomplete="off"></div>
+    <div class="checkout-field"><label for="demo-last">Soyad *</label><input id="demo-last" name="last" required minlength="2" maxlength="60" placeholder="Örnek" autocomplete="off"></div>
+    <div class="checkout-field full-width"><label for="demo-email">E-posta *</label><input id="demo-email" name="email" type="email" required maxlength="120" placeholder="deniz@example.com" autocomplete="off"></div>
+    <div class="checkout-field full-width"><label for="demo-phone">Cep telefonu *</label><input id="demo-phone" name="phone" type="tel" inputmode="tel" required pattern="(?:[+]90|90|0)?5[0-9]{9}" maxlength="13" placeholder="05555555555" title="Boşluksuz bir cep telefonu yazın; örneğin 05555555555." autocomplete="off"><small>Örnek: 05555555555 · Boşluk kullanmadan yaz.</small></div>
+    <div class="checkout-field"><label for="demo-city">İl *</label><input id="demo-city" name="city" required minlength="2" maxlength="60" placeholder="İstanbul" autocomplete="off"></div>
+    <div class="checkout-field"><label for="demo-district">İlçe *</label><input id="demo-district" name="district" required minlength="2" maxlength="60" placeholder="Kadıköy" autocomplete="off"></div>
+    <div class="checkout-field full-width"><label for="demo-address">Teslimat adresi *</label><textarea id="demo-address" name="address" required minlength="10" maxlength="500" placeholder="Örnek Mahallesi, Deneme Sokak No: 1" autocomplete="off"></textarea></div>
+  </div><fieldset><legend>Kargo seçeneği · Örnek ücretler</legend><label class="shipping-choice"><input type="radio" name="shipping" value="standard" ${checkoutSession.shipping === 'standard' ? 'checked' : ''}><span>Standart teslimat<small>2.500 TL ve üzerinde ücretsiz.</small></span><strong>${subtotal >= 250000 ? 'Ücretsiz' : checkoutMoney(6990)}</strong></label><label class="shipping-choice"><input type="radio" name="shipping" value="express" ${checkoutSession.shipping === 'express' ? 'checked' : ''}><span>Hızlı teslimat<small>Yalnızca deneyimi görmek için.</small></span><strong>${checkoutMoney(14990)}</strong></label></fieldset><p class="checkout-error" id="delivery-error" role="alert"></p><div class="checkout-actions"><button class="underlined-link" type="button" data-close>Alışverişe dön</button><button class="button primary" type="submit">Deneme ödemesine devam et</button></div></form>`;
+}
+function deliveryText() {
+  const data = checkoutSession.delivery;
+  return `${data.first} ${data.last}\n${data.address}\n${data.district} / ${data.city}\n${data.email} · ${data.phone}`;
+}
+function paymentStep() {
+  return `<h3 id="checkout-step-heading" tabindex="-1">Son adımı birlikte deneyelim.</h3><p class="checkout-intro">Aşağıdaki seçenekler ödeme sonucunu taklit eder. Kart numarası, son kullanma tarihi veya güvenlik kodu gerekmez.</p><div class="delivery-preview"><h4>Teslimat bilgileri · Deneme</h4><p id="delivery-preview-text"></p><button class="underlined-link" id="edit-demo-delivery" type="button">Bilgileri düzenle</button></div><div class="demo-payment-card">${svg('spark')}<div><h4>Kart bilgisi olmadan dene</h4><p>Herhangi bir banka veya ödeme kuruluşuna bağlanılmaz. Bir sonuç seçip alışveriş deneyimini inceleyebilirsin.</p></div></div><form id="demo-payment-form"><fieldset><legend>Hangi sonucu görmek istersin?</legend><label class="scenario-choice"><input type="radio" name="scenario" value="success" ${checkoutSession.scenario === 'success' ? 'checked' : ''}><span>Başarılı deneme<small>Onay ve deneme referansı ekranını göster.</small></span></label><label class="scenario-choice"><input type="radio" name="scenario" value="failure" ${checkoutSession.scenario === 'failure' ? 'checked' : ''}><span>Başarısız deneme<small>Hata ve yeniden deneme ekranını göster.</small></span></label></fieldset><p class="payment-disclaimer">Bu işlem bir satın alma değildir. Ücret alınmaz, gerçek sipariş oluşmaz ve bildirim e-postası gönderilmez.</p><div class="checkout-actions"><button class="underlined-link" type="button" id="payment-back">Teslimata dön</button><button class="button primary" type="submit" id="simulate-payment">Denemeyi tamamla</button></div><p id="payment-progress" class="checkout-intro" role="status"></p></form>`;
+}
+function resultStep() {
+  if (checkoutSession.result === 'failure') return `<div class="checkout-result"><span class="result-symbol" aria-hidden="true">×</span><p class="eyebrow">BAŞARISIZ ÖDEME SENARYOSU</p><h3 id="checkout-step-heading" tabindex="-1">Bir kez daha deneyelim.</h3><p>Seçtiğin başarısız ödeme senaryosu gösteriliyor. Gerçek bir ödeme denenmedi, ücret alınmadı ve sipariş oluşmadı.</p><p>Teslimat bilgilerin bu ekran açık kaldığı sürece korunur. Geri dönüp başarılı senaryoyu da inceleyebilirsin.</p><div class="checkout-actions"><button class="button primary" id="retry-demo" type="button">Yeniden dene</button><button class="underlined-link" data-close type="button">Alışverişe dön</button></div></div>`;
+  return `<div class="checkout-result"><span class="result-symbol" aria-hidden="true">✓</span><p class="eyebrow">BAŞARILI ÖDEME SENARYOSU</p><h3 id="checkout-step-heading" tabindex="-1">Deneme tamamlandı.</h3><p>Ödeme simülasyonu başarılı. <strong>Gerçek ödeme alınmadı ve sipariş oluşturulmadı.</strong></p><div class="demo-reference">Deneme referansı<strong>${checkoutSession.reference}</strong>Gerçek bir sipariş numarası değildir.</div><p>Sepetindeki ürünler korunuyor. Bu ekranı kapattığında girdiğin teslimat bilgileri silinir.</p><div class="checkout-actions"><button class="button primary" data-close type="button">Keşfetmeye devam et</button><button class="underlined-link" id="retry-demo" type="button">Başka bir sonuç dene</button></div></div>`;
+}
+const deliveryNames = ['first', 'last', 'email', 'phone', 'city', 'district', 'address'];
+$('#checkout-dialog').addEventListener('click', event => {
+  if (!checkoutSession || checkoutSession.busy) return;
+  if (event.target.closest('#fill-demo-details')) {
+    const sample = { first: 'Deniz', last: 'Örnek', email: 'deniz@example.com', phone: '05555555555', city: 'İstanbul', district: 'Kadıköy', address: 'Örnek Mahallesi, Deneme Sokak No: 1' };
+    deliveryNames.forEach(name => { $(`#delivery-form [name="${name}"]`).value = sample[name]; });
+    $('#delivery-error').textContent = '';
+    toast('Örnek bilgiler dolduruldu. Gerçek bilgi gerekmez.');
+  }
+  if (event.target.closest('#edit-demo-delivery, #payment-back')) { checkoutSession.step = 1; renderCheckout(); }
+  if (event.target.closest('#retry-demo')) { checkoutSession.step = 2; checkoutSession.result = null; renderCheckout(); }
+});
+$('#checkout-dialog').addEventListener('change', event => {
+  if (!checkoutSession || checkoutSession.busy) return;
+  if (event.target.name === 'shipping') {
+    checkoutSession.shipping = event.target.value === 'express' ? 'express' : 'standard';
+    $('.checkout-summary').innerHTML = checkoutSummary();
+  }
+  if (event.target.name === 'scenario') checkoutSession.scenario = event.target.value === 'failure' ? 'failure' : 'success';
+});
+$('#checkout-dialog').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!checkoutSession || checkoutSession.busy) return;
+  if (event.target.id === 'delivery-form') {
+    const form = event.target;
+    deliveryNames.forEach(name => { form.elements.namedItem(name).value = form.elements.namedItem(name).value.trim(); });
+    const invalidText = deliveryNames.find(name => {
+      const input = form.elements.namedItem(name);
+      return input.value.length < (name === 'address' ? 10 : 2);
+    });
+    if (!form.reportValidity() || invalidText) {
+      $('#delivery-error').textContent = 'Lütfen zorunlu alanları geçerli örnek bilgilerle doldur. Adres en az 10 karakter olmalı.';
+      if (invalidText) form.elements.namedItem(invalidText).focus();
+      return;
+    }
+    checkoutSession.delivery = Object.fromEntries(deliveryNames.map(name => [name, form.elements.namedItem(name).value]));
+    checkoutSession.step = 2;
+    renderCheckout();
+  } else if (event.target.id === 'demo-payment-form') {
+    checkoutSession.busy = true;
+    $('.checkout-main').setAttribute('aria-busy', 'true');
+    $$('#demo-payment-form input, #demo-payment-form button, #edit-demo-delivery').forEach(control => { control.disabled = true; });
+    $('#simulate-payment').textContent = 'Deneme hazırlanıyor…';
+    $('#payment-progress').textContent = 'Seçtiğin örnek sonuç hazırlanıyor. Gerçek ödeme yapılmıyor.';
+    const current = checkoutSession;
+    checkoutTimer = setTimeout(() => {
+      if (checkoutSession !== current || !$('#checkout-dialog').open) return;
+      current.busy = false;
+      current.result = current.scenario;
+      current.reference = `DEMO-RBS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+      current.step = 3;
+      renderCheckout();
+    }, 700);
+  }
+});
+$('#checkout-dialog').addEventListener('close', () => {
+  clearTimeout(checkoutTimer);
+  checkoutSession = null;
+  $('#checkout-content').replaceChildren();
+});
+
 persist(); renderProducts(); renderCart();

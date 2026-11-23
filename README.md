@@ -17,6 +17,8 @@ Yerel sunucu kullanmak için bu klasörde `python -m http.server 8080` komutunu 
 - Ürün detayları ve beden seçimi
 - Tarayıcıda saklanan favoriler ve sepet
 - Sepette adet değiştirme, ürün kaldırma ve sipariş özeti
+- Kart bilgisi istemeyen üç adımlı deneme ödeme akışı: teslimat, ödeme senaryosu ve sonuç
+- Örnek teslimat bilgileri, örnek kargo ücretleri ve başarılı/başarısız sonuçları yeniden deneme
 - Mobil menü ve farklı ekran boyutlarına uyarlanan düzen
 
 ## Dosyalar
@@ -24,11 +26,18 @@ Yerel sunucu kullanmak için bu klasörde `python -m http.server 8080` komutunu 
 - `index.html`: Sayfa yapısı
 - `style.css`: Tasarım ve ekran uyarlamaları
 - `app.js`: Örnek ürünler ve alışveriş etkileşimleri
+- `checkout.css`: Deneme ödeme ekranı ve mobil düzeni
 - `assets/`: Projeye dahil edilmiş örnek görseller
 
 ## Kapsam
 
 Bu sürüm tasarım ve etkileşim prototipidir. Gerçek ödeme alınmaz, sipariş oluşturulmaz ve bülten adresleri kaydedilmez. Gerçek satış için sunucu, stok, ödeme ve teslimat hizmetleri bağlanmalıdır. Ürünler, fiyatlar ve hizmet koşulları örnektir.
+
+## Deneme ödeme akışı
+
+Sepete ürün ekleyin, sepeti açıp **Deneme ödemesine geç** düğmesine basın. Teslimat formunda **Örnek bilgilerle doldur** seçeneğini kullanabilirsiniz. Gerçek kişisel bilgi veya kart bilgisi girmeniz gerekmez. Standart kargo 2.500 TL altında örnek 69,90 TL, bu tutar ve üzerinde ücretsizdir; hızlı kargo örnek 149,90 TL'dir.
+
+İkinci adımda başarılı veya başarısız deneme senaryosunu seçin. Sonuç ekranındaki `DEMO-RBS-…` referansı gerçek bir sipariş numarası değildir. Deneme sonunda sepet korunur. Teslimat bilgileri yalnızca bellekte tutulur; sunucuya gönderilmez, localStorage'a yazılmaz ve ekran kapatılınca silinir. Hiçbir ödeme kuruluşuna bağlantı kurulmaz.
 
 Sepet ve favoriler `localStorage` üzerinden aynı tarayıcıda saklanır. Önceki sürümdeki geçerli kayıtlar yeni Rabüs anahtarlarına aktarılır. Yazı tipleri Google Fonts üzerinden yüklenir; internet bağlantısı yoksa sistem yazı tipleri kullanılır. Ürün fotoğrafları Unsplash kaynaklıdır. Rabüs kampanya görseli yerleşik ImageGen aracıyla üretildi; kullanılan istem ve dosya bilgisi [görsel notlarında](assets/IMAGE-NOTES.md) bulunur.
 
