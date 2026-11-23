@@ -1,6 +1,10 @@
-# VELOUR — Moda ve Aksesuar
+# Rabüs — Moda ve Aksesuar
 
 Türkçe, mobil ekranlara uyarlanan bir e-ticaret konsept mağazası.
+
+GitHub Pages: https://theorkun.github.io/eticaret/
+
+Rabüs tasarımı; markaya özel bordo kampanya görseli, serif marka yazısı, görselli kategori bağlantıları, ferah ürün kartları ve mobil ekranlara uyarlanan bir sayfa düzeni içerir.
 
 ## Çalıştırma
 
@@ -26,6 +30,6 @@ Yerel sunucu kullanmak için bu klasörde `python -m http.server 8080` komutunu 
 
 Bu sürüm tasarım ve etkileşim prototipidir. Gerçek ödeme alınmaz, sipariş oluşturulmaz ve bülten adresleri kaydedilmez. Gerçek satış için sunucu, stok, ödeme ve teslimat hizmetleri bağlanmalıdır. Ürünler, fiyatlar ve hizmet koşulları örnektir.
 
-Sepet ve favoriler `localStorage` üzerinden aynı tarayıcıda saklanır. Yazı tipleri Google Fonts üzerinden yüklenir; internet bağlantısı yoksa sistem yazı tipleri kullanılır. Örnek fotoğraflar Unsplash kaynaklıdır.
+Sepet ve favoriler `localStorage` üzerinden aynı tarayıcıda saklanır. Önceki sürümdeki geçerli kayıtlar yeni Rabüs anahtarlarına aktarılır. Yazı tipleri Google Fonts üzerinden yüklenir; internet bağlantısı yoksa sistem yazı tipleri kullanılır. Ürün fotoğrafları Unsplash kaynaklıdır. Rabüs kampanya görseli yerleşik ImageGen aracıyla üretildi; kullanılan istem ve dosya bilgisi [görsel notlarında](assets/IMAGE-NOTES.md) bulunur.
 
 JavaScript sözdizimi ve alışveriş mantığı kontrolleri tamamlandı. Tarayıcı aracı kullanılamadığı için bu sürümün görsel tarayıcı doğrulaması tamamlanmadı.
